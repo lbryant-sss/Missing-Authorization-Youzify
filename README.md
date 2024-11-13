@@ -23,11 +23,9 @@ Add a `current_user_can()` check to enforce that only users with the correct cap
 3. The `delete_review()` function interacts directly with the database using `$wpdb->delete()` to remove the review based solely on `review_id`.
 4. Since `delete_review()` also lacks permission checks, any logged-in user who knows the `review_id` can delete any review.
 
-# Vulnerable Code Flow in the `youzify_delete_user_review` Action
+## Vulnerable Code Flow in the `youzify_delete_user_review` Action
 
 The following code demonstrates the flow of a vulnerability in the `youzify_delete_user_review` action that allows unauthorized deletion of reviews without proper authorization checks. This code lacks a capability check, allowing any logged-in user to delete any review by providing a valid `review_id` and nonce.
-
-### Code
 
 ```php
 // Register the AJAX action
@@ -91,7 +89,7 @@ function delete_review( $review_id ) {
 }
 
 
-
+```
 ### Why This Is a Missing Authorization Bug
 - **Authorization is missing at both levels**: Neither `delete_user_review()` nor `delete_review()` checks if the user has permission to delete reviews.
 - This bug allows any authenticated user to delete any review by making a valid AJAX request with an existing `review_id` and nonce.
