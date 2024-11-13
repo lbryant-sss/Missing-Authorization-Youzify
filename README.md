@@ -172,7 +172,7 @@ function delete_user_review() {
     exit;
 }
 ```
-# Missing Authentication Exploit Example
+# Missing Authentication Exploit
 
 The following Python script demonstrates a missing authentication exploit in a WordPress site using AJAX. This script logs into the site, retrieves a nonce token from a specific page, and then uses this nonce to delete a review via an AJAX request.
 
