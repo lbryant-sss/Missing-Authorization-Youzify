@@ -30,7 +30,8 @@ The following code demonstrates the flow of a vulnerability in the `youzify_dele
 ```php
 // Register the AJAX action
 add_action( 'wp_ajax_youzify_delete_user_review', array( $this, 'delete_user_review' ) );
-
+```
+```
 function delete_user_review() {
 
     // Check Ajax Referer for nonce validation.
@@ -60,7 +61,6 @@ function delete_user_review() {
     }
 
     do_action( 'youzify_before_deleting_user_review', $review_id, $review_data );
-
     // Delete Review.
     if ( $youzify_query->delete_review( $review_id ) ) {
         // Update User Ratings Count & Rate.
@@ -71,7 +71,8 @@ function delete_user_review() {
 
     die( json_encode( $response ) );
 }
-
+```
+```
 // Function to delete the review from the database.
 function delete_review( $review_id ) {
 
