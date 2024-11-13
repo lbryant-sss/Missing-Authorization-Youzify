@@ -31,7 +31,7 @@ The following code demonstrates the flow of a vulnerability in the `youzify_dele
 // Register the AJAX action
 add_action( 'wp_ajax_youzify_delete_user_review', array( $this, 'delete_user_review' ) );
 ```
-```
+```php
 function delete_user_review() {
 
     // Check Ajax Referer for nonce validation.
@@ -72,7 +72,7 @@ function delete_user_review() {
     die( json_encode( $response ) );
 }
 ```
-```
+```php
 // Function to delete the review from the database.
 function delete_review( $review_id ) {
 
@@ -171,13 +171,11 @@ function delete_user_review() {
 
     exit;
 }
-
-
+```
 # Missing Authentication Exploit Example
 
 The following Python script demonstrates a missing authentication exploit in a WordPress site using AJAX. This script logs into the site, retrieves a nonce token from a specific page, and then uses this nonce to delete a review via an AJAX request.
 
-### Code
 
 ```python
 import requests
