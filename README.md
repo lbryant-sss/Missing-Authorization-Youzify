@@ -23,6 +23,75 @@ Add a `current_user_can()` check to enforce that only users with the correct cap
 3. The `delete_review()` function interacts directly with the database using `$wpdb->delete()` to remove the review based solely on `review_id`.
 4. Since `delete_review()` also lacks permission checks, any logged-in user who knows the `review_id` can delete any review.
 
+# Vulnerable Code Flow in the `youzify_delete_user_review` Action
+
+The following code demonstrates the flow of a vulnerability in the `youzify_delete_user_review` action that allows unauthorized deletion of reviews without proper authorization checks. This code lacks a capability check, allowing any logged-in user to delete any review by providing a valid `review_id` and nonce.
+
+### Code
+
+```php
+// Register the AJAX action
+add_action( 'wp_ajax_youzify_delete_user_review', array( $this, 'delete_user_review' ) );
+
+function delete_user_review() {
+
+    // Check Ajax Referer for nonce validation.
+    check_ajax_referer( 'youzify-nonce', 'security' );
+
+    do_action( 'youzify_before_delete_user_review' );
+
+    // Get Review ID.
+    $review_id = isset( $_POST['review_id'] ) ? absint( $_POST['review_id'] ) : null;
+
+    if ( empty( $review_id ) ) {
+        $response['error'] = __( "Sorry we didn't receive enough data to process this action.", 'youzify' );
+        die( json_encode( $response ) );
+    }
+
+    global $Youzify;
+
+    // Get User Query.
+    $youzify_query = $Youzify->reviews->query;
+
+    // Get Review Data.
+    $review_data = $youzify_query->get_review_data( $review_id );
+
+    if ( ! $review_data ) {
+        $response['error'] = __( 'The review is already deleted or does not exist.', 'youzify' );
+        die( json_encode( $response ) );
+    }
+
+    do_action( 'youzify_before_deleting_user_review', $review_id, $review_data );
+
+    // Delete Review.
+    if ( $youzify_query->delete_review( $review_id ) ) {
+        // Update User Ratings Count & Rate.
+        $youzify_query->update_user_reviews_count( $review_data['reviewed'] );
+        $youzify_query->update_user_ratings_rate( $review_data['reviewed'] );
+        $response['msg'] = __( 'The review is successfully deleted.', 'youzify' );
+    }
+
+    die( json_encode( $response ) );
+}
+
+// Function to delete the review from the database.
+function delete_review( $review_id ) {
+
+    global $wpdb, $Youzify_reviews_table;
+
+    // Delete Review.
+    $delete = $wpdb->delete( $Youzify_reviews_table, array( 'id' => $review_id ), array( '%d' ) );
+
+    // Get Result.
+    if ( $delete ) {
+        return true;
+    }
+
+    return false;
+}
+
+
+
 ### Why This Is a Missing Authorization Bug
 - **Authorization is missing at both levels**: Neither `delete_user_review()` nor `delete_review()` checks if the user has permission to delete reviews.
 - This bug allows any authenticated user to delete any review by making a valid AJAX request with an existing `review_id` and nonce.
